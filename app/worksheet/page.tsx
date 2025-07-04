@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowRight, MessageSquare, Phone } from "lucide-react";
+import { ArrowRight, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { generateUniqueIndoPhone } from "./unique-phone";
 
 type CallResponse = {
   status: 'positive' | 'neutral' | 'negative' | '';
@@ -53,25 +54,19 @@ export default function Page() {
     return groups[Math.floor(Math.random() * groups.length)];
   }
 
-  async function fetchPhone() {
-    try {
-      const res = await fetch("/api/unique-phone");
-      const data = await res.json();
-      setPhone(data.phone);
-      setCustomer(randomCustomerName());
-      setOperator(randomOperatorGroup());
-      setResponse({ status: '', notes: '' }); // Reset response for new call
-    } catch (error) {
-      console.error("Failed to fetch phone number:", error);
-    }
+  // Simpan nomor yang sudah dipakai di sesi ini
+  const usedNumbers = useRef<Set<string>>(new Set());
+
+  function getNewPhone() {
+    const phone = generateUniqueIndoPhone(usedNumbers.current);
+    usedNumbers.current.add(phone);
+    return phone;
   }
 
   async function submitCurrentCall() {
     if (!phone) return;
-    
     setIsSubmitting(true);
     try {
-      // Here you would typically send the data to your backend
       const callData = {
         phone,
         customer,
@@ -80,19 +75,11 @@ export default function Page() {
         notes: response.notes,
         timestamp: new Date().toISOString()
       };
-      
-      console.log("Submitting call data:", callData);
-      // Example API call:
-      // await fetch('/api/calls', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(callData)
-      // });
-      
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
+      // console.log("Submitting call data:", callData);
     } catch (error) {
-      console.error("Failed to submit call data:", error);
+      // console.error("Failed to submit call data:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -122,23 +109,31 @@ export default function Page() {
   }
 
   const handleNextCall = async () => {
-    // First submit the current call data
     if (response.status) {
       await submitCurrentCall();
     }
-    // Kirim pesan via Fonnte sebelum ganti nomor
     const sent = await sendFonnteMessage();
     if (sent) {
       toast.success("Pesan berhasil dikirim via Fonnte!");
     } else {
       toast.error("Gagal mengirim pesan via Fonnte.");
     }
-    // Then fetch a new number
-    await fetchPhone();
+    // Generate new data
+    const newPhone = getNewPhone();
+    setPhone(newPhone);
+    setCustomer(randomCustomerName());
+    setOperator(randomOperatorGroup());
+    setResponse({ status: '', notes: '' });
   };
 
   useEffect(() => {
-    fetchPhone();
+    // Init data on mount
+    const newPhone = getNewPhone();
+    setPhone(newPhone);
+    setCustomer(randomCustomerName());
+    setOperator(randomOperatorGroup());
+    setResponse({ status: '', notes: '' });
+    // eslint-disable-next-line
   }, []);
 
   return (
@@ -169,9 +164,7 @@ export default function Page() {
                           <span className="font-mono text-lg select-all">
                             {maskPhoneNumber(phone)}
                           </span>
-                          {/* Button Call removed */}
                         </div>
-                        {/* Debug info */}
                         <div className="text-xs text-muted-foreground break-all">
                           <span>DEBUG: {phone}</span>
                         </div>
@@ -185,12 +178,7 @@ export default function Page() {
                         <div className="font-mono text-lg">{operator}</div>
                       </div>
                     </div>
-
                     <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
-                      <Button variant="outline" className="gap-2 flex-1 md:flex-none">
-                        <Phone className="h-4 w-4" />
-                        Skype Call
-                      </Button>
                       <a
                         href={phone ? `https://wa.me/${phone.replace(/^\+/, "")}` : "#"}
                         target="_blank"
@@ -203,9 +191,7 @@ export default function Page() {
                         </Button>
                       </a>
                     </div>
-
                     <hr className="my-6" />
-
                     <div className="space-y-4">
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                         <h3 className="font-medium">Response Tracking</h3>
@@ -218,7 +204,6 @@ export default function Page() {
                           Clear
                         </Button>
                       </div>
-
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -258,7 +243,6 @@ export default function Page() {
                     </div>
                   </CardContent>
                 </Card>
-
                 <div className="flex justify-end mt-8">
                   <Button 
                     className="gap-2" 
