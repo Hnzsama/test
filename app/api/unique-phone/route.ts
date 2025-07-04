@@ -77,12 +77,16 @@ function generateUniquePhoneNumber() {
 export async function GET() {
   try {
     const phone = generateUniquePhoneNumber();
+    // Debug log for production
+    console.log("[FONNTE DEBUG] Generated phone:", phone);
     return NextResponse.json({ 
       phone,
       format: "international", // Always international now
-      carrier: detectCarrier(phone)
+      carrier: detectCarrier(phone),
+      debug: phone // Add debug field for client-side inspection
     });
   } catch (error) {
+    console.error("[FONNTE DEBUG] Error generating phone:", error);
     return NextResponse.json(
       { error: "Failed to generate phone number. Please try again." },
       { status: 500 }

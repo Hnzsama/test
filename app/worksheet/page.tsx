@@ -169,10 +169,11 @@ export default function Page() {
                           <span className="font-mono text-lg select-all">
                             {maskPhoneNumber(phone)}
                           </span>
-                          <Button variant="outline">
-                            <Phone className="h-4 w-4 mr-2" />
-                            Call
-                          </Button>
+                          {/* Button Call removed */}
+                        </div>
+                        {/* Debug info */}
+                        <div className="text-xs text-muted-foreground break-all">
+                          <span>DEBUG: {phone}</span>
                         </div>
                       </div>
                       <div className="space-y-2">
